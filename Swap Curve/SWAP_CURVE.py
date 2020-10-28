@@ -1,51 +1,50 @@
+import datetime
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
+
 import QuantLib as ql
 import xlwings as xw
-import pandas as pd
-import datetime
 
-# Get Quote from Bloomberg
-def GET_QUOTE(ticker):
+# Get Quote from Excel File
+def GET_QUOTE(today):
+    
+    # Import Data from Excel
     xw.App(visible=False)
-    wb = xw.Book(r'Z:\PL\SWAP_CURVE.xlsb')
-    
-    if ticker == 'USDIRS':
-        sht = wb.sheets(ticker)
-        curve = sht.range('A1:E25').options(pd.DataFrame).value
-        
-    elif ticker == 'KRWIRS':
-        sht = wb.sheets(ticker)
-        curve = sht.range('A1:D15').options(pd.DataFrame).value
-        
-    elif ticker == 'KRWCCS':
-        sht = wb.sheets(ticker)
-        curve = sht.range('A1:D15').options(pd.DataFrame).value
-    
+    wb = xw.Book(r'C:\Users\david\Downloads\Data.xlsx')
+    sht = wb.sheets('Sheet1')
+    curve = sht.range('A1:D25').options(pd.DataFrame).value
     wb.close()
-    return curve 
+    
+    # Pre-process DataFrame
+    curve['DaysToMaturity'] = np.nan
+    curve['Maturity'] = pd.to_datetime(curve['Maturity']).dt.date
+    
+    for tenor in curve.index:
+        curve.loc[tenor, 'DaysToMaturity'] = (curve.loc[tenor, 'Maturity'] - today).days
+    
+    return curve
 
 # Construct IRS Curve
-def CURVE(today, ticker, quote):
-
+def SWAP_CURVE(today, quote):
+    
+    # Divide DataFrame into 3 Parts
     depo = quote[quote['InstType'] == 'CASH']
     futures = quote[quote['InstType'] == 'FUTURE']
     swap = quote[quote['InstType'] == 'SWAP']
 
+    # Set Evaluation Date
     todays_date = ql.Date(today.day, today.month, today.year)
     ql.Settings.instance().evaluationDate = todays_date
     
-    if ticker == 'USDIRS':
-        calendar = ql.UnitedStates()
-        dayCounter = ql.Actual360()
-        adjustment = ql.ModifiedFollowing
-        settlementDays = 2
-        frequency = ql.Semiannual
-
-    elif ticker == 'KRWIRS':
-        calendar = ql.SouthKorea()
-        dayCounter = ql.Actual365Fixed()
-        adjustment = ql.ModifiedFollowing
-        settlementDays = 2
-        frequency = ql.Quarterly
+    # Market Conventions
+    calendar = ql.UnitedStates()
+    dayCounter = ql.Actual360()
+    convention = ql.ModifiedFollowing
+    settlementDays = 2
+    frequency = ql.Semiannual
         
     # Build Rate Helpers
     # 1. Deposit Rate Helper
@@ -53,12 +52,12 @@ def CURVE(today, ticker, quote):
                                            ql.Period(int(day), ql.Days),
                                            settlementDays,
                                            calendar,
-                                           adjustment,
+                                           convention,
                                            False,
                                            dayCounter)
                       for day, rate in zip(depo['DaysToMaturity'], depo['Market.Mid'])]
     
-    # 2. Fra Rate Helper
+    # 2. Futures Rate Helper
     futuresHelpers = []
     for i, price in enumerate(futures['Market.Mid']):
         iborStartDate = ql.Date(futures['Maturity'][i].day,
@@ -69,10 +68,9 @@ def CURVE(today, ticker, quote):
                                              iborStartDate,
                                              3,
                                              calendar,
-                                             adjustment,
+                                             convention,
                                              False,
                                              dayCounter)
-        
         futuresHelpers.append(futuresHelper)
     
     # 3. Swap Rate Helper
@@ -80,7 +78,7 @@ def CURVE(today, ticker, quote):
                                      ql.Period(int(day), ql.Days),
                                      calendar,
                                      frequency,
-                                     adjustment,
+                                     convention,
                                      dayCounter,
                                      ql.Euribor3M())
                    for day, rate in zip(swap['DaysToMaturity'], swap['Market.Mid'])]
@@ -91,118 +89,69 @@ def CURVE(today, ticker, quote):
         
     return depoFuturesSwapCurve
 
+def DISCOUNT_FACTOR(date, curve):
+    date = ql.Date(date.day, date.month, date.year)
+    return curve.discount(date)
 
-# Pricing Swap Contract
-def IRS(ticker, notional, effective_date, maturity_date, position, fixed_rate, curve, spread=0):
-        
-    # term structure handles
-    discountTermStructure = ql.RelinkableYieldTermStructureHandle()
-    forecastTermStructure = ql.RelinkableYieldTermStructureHandle()
-    
-    discountTermStructure.linkTo(curve)
-    forecastTermStructure.linkTo(curve)     
-    
-    effective_date = ql.Date(effective_date.day, effective_date.month, effective_date.year)
-    maturity_date = ql.Date(maturity_date.day, maturity_date.month, maturity_date.year)
+def ZERO_RATE(date, curve):
+    date = ql.Date(date.day, date.month, date.year)
+    day_counter = ql.Actual360()
+    compounding = ql.Compounded
+    freq = ql.Continuous
+    zero_rate = curve.zeroRate(date,
+                               day_counter,
+                               compounding,
+                               freq).rate()
+    return zero_rate
 
-    if position == 'Pay':
-        position = ql.VanillaSwap.Payer
-    elif position == 'Rcv':
-        position = ql.VanillaSwap.Receiver
+def FORWARD_RATE(date, curve):
+    date = ql.Date(date.day, date.month, date.year)
+    day_counter = ql.Actual360()
+    compounding = ql.Compounded
+    freq = ql.Continuous
+    forward_rate = curve.forwardRate(date,
+                                     date,
+                                     day_counter,
+                                     compounding,
+                                     freq,
+                                     True).rate()
+    return forward_rate
 
-    if ticker == 'USDIRS':
-        calendar = ql.UnitedStates()
-        
-        # Fixed Leg
-        fixedLegAdjustment = ql.ModifiedFollowing
-        fixedLegDayCounter = ql.Thirty360()
-        fixedLegTenor = ql.Period(3,ql.Months)
-        
-        # Floating Leg
-        usd_libor = ql.USDLibor(ql.Period(3, ql.Months), forecastTermStructure)
-#        usd_libor.addFixing(ql.Date(16, 3, 2020), 0.088938)
-        floatingLegAdjustment = ql.ModifiedFollowing
-        floatingLegDayCounter = ql.Actual360()
-        floatingLegTenor = ql.Period(3,ql.Months)
-        
-      
-    elif ticker == 'KRWIRS':
-        calendar = ql.SouthKorea()
-        
-        # Fixed Leg
-        fixedLegAdjustment = ql.ModifiedFollowing
-        fixedLegDayCounter = ql.Actual365Fixed()
-        fixedLegTenor = ql.Period(3,ql.Months)
-        
-        # Floating Leg
-        index = ql.USDLibor(ql.Period(3, ql.Months), forecastTermStructure)
-        floatingLegAdjustment = ql.ModifiedFollowing
-        floatingLegDayCounter = ql.Actual365Fixed()
-        floatingLegTenor = ql.Period(3,ql.Months)
-        
-        
-    # Fixed Schedule
-    fixedSchedule = ql.Schedule(effective_date,
-                                maturity_date,
-                                fixedLegTenor,
-                                calendar,
-                                fixedLegAdjustment,
-                                fixedLegAdjustment,
-                                ql.DateGeneration.Forward,
-                                False)
-    
-    # Floating Schedule
-    floatingSchedule = ql.Schedule(effective_date,
-                                   maturity_date,
-                                   floatingLegTenor,
-                                   calendar,
-                                   floatingLegAdjustment,
-                                   floatingLegAdjustment,
-                                   ql.DateGeneration.Forward,
-                                   False)
-    
-    # Plain Vanilla Swap
-    if ticker == "USDIRS":
-        index = usd_libor
-    
-    irs = ql.VanillaSwap(position,
-                         notional,
-                         fixedSchedule,
-                         fixed_rate,
-                         fixedLegDayCounter,
-                         floatingSchedule,
-                         index,
-                         spread,
-                         floatingLegDayCounter)
-
-    # Pricing Engine
-    swapEngine = ql.DiscountingSwapEngine(discountTermStructure)  
-    irs.setPricingEngine(swapEngine)
-    
-    return irs
-
-def PRICER(curve, product):
-    # term structure handles
-    discountTermStructure = ql.RelinkableYieldTermStructureHandle()
-    discountTermStructure.linkTo(curve)
-    
-    swapEngine = ql.DiscountingSwapEngine(discountTermStructure)
-    product.setPricingEngine(swapEngine)
-    
-    return product
 
 if __name__ == "__main__":
-    todays_date = datetime.date.today()
-    ticker = 'USDIRS'
-    position = 'Pay'
-    notional = 10000000
-    effective_date = datetime.date(2020, 9, 25)
-    maturity_date = datetime.date(2025, 9, 25)
-    fixed_rate = 0.32795 / 100
     
-    quote = GET_QUOTE(ticker)
-    curve = CURVE(todays_date, ticker, quote)  
-    irs = IRS(ticker, notional, effective_date, maturity_date, position, fixed_rate, curve)
-    irs_pricer = PRICER(curve, irs)
+    # Today's Date
+    todays_date = datetime.date(2020, 10, 9)
+
+    # Get Quote & Build Swap Curve
+    quote = GET_QUOTE(todays_date)
+    curve = SWAP_CURVE(todays_date, quote)  
     
-    print(irs_pricer.NPV())
+    # Calculate Discount Factor / Zero Rate / Forward Rate
+    quote['discount factor'] = np.nan
+    quote['zero rate'] = np.nan
+    quote['forward rate'] = np.nan
+    
+    for tenor, date in zip(quote.index, quote['Maturity']):
+        quote.loc[tenor, 'discount factor'] = DISCOUNT_FACTOR(date, curve)
+        quote.loc[tenor, 'zero rate'] = ZERO_RATE(date, curve) * 100
+        quote.loc[tenor, 'forward rate'] = FORWARD_RATE(date, curve) * 100
+        
+    # Print the Result
+    print(quote[['discount factor', 'zero rate', 'forward rate']])
+    
+    # Plot the Result
+    plt.figure(figsize=(16, 8))
+    plt.plot(quote['zero rate'], 'b.-', label='Zero Curve')
+    plt.plot(quote['forward rate'], 'g.-', label='Forward Curve')
+    plt.title('Zero & Forward Curve', loc='center')
+    plt.legend()
+    plt.xlabel('Maturity')
+    plt.ylabel('Interest Rate')
+    
+    plt.figure(figsize=(16, 8))
+    plt.plot(quote['discount factor'], 'r.-', label='Discount Curve')
+    plt.title('Discount Curve', loc='center')
+    plt.legend()
+    plt.xlabel('Maturity')
+    plt.ylabel('Discount Factor')
