@@ -32,6 +32,10 @@ class CCS():
         self.float_day_count = qe.Actual360()
         
         self.npv = self.PRICING(self.usd_curve, self.krw_curve, self.spot_handle)
+        self.fx_delta = self.FX_DELTA(fx_spot)
+        self.usd_curve_delta = self.USD_CURVE_DELTA()
+        self.krw_curve_delta = self.KRW_CURVE_DELTA()
+        self.theta = self.THETA()
         
     def USD_CURVE(self, date):
         curve_handle = qe.YieldTermStructureHandle(USDIRS_CURVE(date, GET_QUOTE(date, 'USD')))
@@ -81,9 +85,9 @@ class CCS():
                                       self.calendar)
 
         engine = qe.CrossCcySwapEngine(self.krw,
-                                       self.krw_curve,
+                                       krw_curve,
                                        self.usd,
-                                       self.usd_curve,
+                                       usd_curve,
                                        fx_spot)
         
         ccs.setPricingEngine(engine)
@@ -92,6 +96,74 @@ class CCS():
         
         return npv
         
+    def FX_DELTA(self, fx_spot):
+        up_fx = fx_spot * 1.0001
+        up_fx_handle = qe.QuoteHandle(qe.SimpleQuote(up_fx))
+        up_fxf = self.PRICING(self.usd_curve, self.krw_curve, up_fx_handle)
+        
+        down_fx = fx_spot * 0.9999
+        down_fx_handle = qe.QuoteHandle(qe.SimpleQuote(down_fx))
+        down_fxf = self.PRICING(self.usd_curve, self.krw_curve, down_fx_handle)
+        
+        fx_delta = (up_fxf - down_fxf) / 2
+        print("FX Delta = {}".format(fx_delta))
+        return fx_delta
+    
+    def USD_CURVE_DELTA(self):
+        curve_handle = self.usd_curve
+        
+        # 1bp
+        basis_point = 0.0001
+        
+        # FRA price when 1bp up
+        up_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(basis_point)))
+        up_curve_handle = qe.YieldTermStructureHandle(up_curve)
+        up_fxf = self.PRICING(up_curve_handle, self.krw_curve, self.spot_handle)
+        
+        # FRA price when 1bp down
+        down_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(-basis_point)))
+        down_curve_handle = qe.YieldTermStructureHandle(down_curve)
+        down_fxf = self.PRICING(down_curve_handle, self.krw_curve, self.spot_handle)
+
+        # DV01
+        dv01 = (up_fxf - down_fxf) / 2
+        print("USD Curve Delta = {}".format(dv01))
+        return dv01
+    
+    def KRW_CURVE_DELTA(self):
+        curve_handle = self.krw_curve
+        
+        # 1bp
+        basis_point = 0.0001
+        
+        # FRA price when 1bp up
+        up_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(basis_point)))
+        up_curve_handle = qe.YieldTermStructureHandle(up_curve)
+        up_fxf = self.PRICING(self.usd_curve, up_curve_handle, self.spot_handle)
+        
+        # FRA price when 1bp down
+        down_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(-basis_point)))
+        down_curve_handle = qe.YieldTermStructureHandle(down_curve)
+        down_fxf = self.PRICING(self.usd_curve, down_curve_handle, self.spot_handle)
+
+        # DV01
+        dv01 = (up_fxf - down_fxf) / 2
+        print("KRW Curve Delta = {}".format(dv01))
+        return dv01
+    
+    def THETA(self):
+        price_t0 = self.PRICING(self.usd_curve, self.krw_curve, self.spot_handle)
+        
+        usd_curve_t1 = self.USD_CURVE(self.date + datetime.timedelta(days=1))
+        krw_curve_t1 = self.KRW_CURVE(self.date + datetime.timedelta(days=1))
+        
+        price_t1 = self.PRICING(usd_curve_t1, krw_curve_t1, self.spot_handle)
+        
+        theta = price_t1 - price_t0
+        print("1-day Theta = {}".format(theta))
+        
+        return theta
+    
 if __name__ == "__main__":
     
     todays_date = datetime.date(2020, 10, 20)
