@@ -13,8 +13,8 @@ def GET_QUOTE(today):
     
     # Import Data from Excel
     xw.App(visible=False)
-    wb = xw.Book(r'C:\Users\david\Downloads\Data.xlsx')
-    sht = wb.sheets('Sheet1')
+    wb = xw.Book(r'./Data.xlsx')
+    sht = wb.sheets('USDIRS')
     curve = sht.range('A1:D25').options(pd.DataFrame).value
     wb.close()
     
