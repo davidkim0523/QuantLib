@@ -17,3 +17,9 @@ my_pal = {'Growth' : 'yellowgreen',
 
 plt.figure(figsize=(10, 8))
 sns.boxplot(data=df, palette=my_pal)
+
+
+fig2 = plt.figure(figsize=(30, 10))
+fig2.tight_layout()
+
+plt.plot(df)
