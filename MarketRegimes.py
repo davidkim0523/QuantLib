@@ -7,8 +7,10 @@ import xlwings as xw
 wb = xw.Book(r'C:\Users\HanaDT\Documents\quantdaddy\Market Regimes.xlsx')
 sht = wb.sheets('Summary')
 df = sht.range('H1:M589').options(pd.DataFrame).value
+df['Funding Liquidity'] = - df['Funding Liquidity']
 wb.close()
 
+"""
 my_pal = {'Growth' : 'yellowgreen',
           'Inflation' : 'brown',
           'Volatility' : 'darkorange',
@@ -23,3 +25,8 @@ fig2 = plt.figure(figsize=(30, 10))
 fig2.tight_layout()
 
 plt.plot(df)
+"""
+
+corrMatrix = df.corr()
+sns.heatmap(corrMatrix, annot=True)
+plt.show()
