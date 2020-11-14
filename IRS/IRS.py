@@ -43,7 +43,7 @@ class IRS():
                                     self.calendar,
                                     self.convention,
                                     self.convention,
-                                    ql.DateGeneration.Forward,
+                                    ql.DateGeneration.Backward,
                                     False)
         
         # Floating Schedule
@@ -53,7 +53,7 @@ class IRS():
                                        self.calendar,
                                        self.convention,
                                        self.convention,
-                                       ql.DateGeneration.Forward,
+                                       ql.DateGeneration.Backward,
                                        False)        
         
         # Interes Rate Swap
