@@ -3,7 +3,7 @@ import QuantExt as qe
 from FX_CURVE import GET_QUOTE, USDIRS_CURVE, KRWCCS_CURVE
 
 class FXF():
-    def __init__(self, todays_date, maturity_date, fx_spot, ccy1, ccy1_notional, ccy2, ccy2_notional, day_count):
+    def __init__(self, todays_date, maturity_date, fx_spot, ccy1, ccy1_notional, ccy2, ccy2_notional, day_count, position):
         
         # Initial Setup 1 - Date / Curves / Spot
         self.date = todays_date
@@ -21,8 +21,11 @@ class FXF():
         self.ccy2_notional = ccy2_notional
         
         self.day_count = day_count
-        self.payCcy1 = False
         
+        if position == 'Long':
+            self.payCcy1 = True
+        else:
+            self.payCcy1 = False
         
         # Pricing Results
         self.npv = self.PRICING(self.usd_curve, self.krw_curve, self.spot_handle)
@@ -126,19 +129,17 @@ if __name__ == "__main__":
     todays_date = datetime.date(2020, 10, 20)
     
     # market
-    maturity_date = datetime.date(2020, 12, 26)
     fx_spot = 1133.85
-    ccy1 = 'KRW'
-    ccy2 = 'USD'
-    
-    fx_forward = 1134.26
     
     # FX Forward Instrument
-    krw = qe.KRWCurrency()
+    fx_forward = 1134.26
+    maturity_date = datetime.date(2020, 12, 26)
     usd = qe.USDCurrency()
-    krw_notional = 7044000000
-    usd_notional = krw_notional / fx_forward
+    krw = qe.KRWCurrency()
+    usd_notional = 10000000
+    krw_notional = usd_notional * fx_forward
     day_count = qe.ActualActual()
+    position = 'Long'
     
     fxf = FXF(todays_date,
               maturity_date,
@@ -147,7 +148,8 @@ if __name__ == "__main__":
               krw_notional,
               usd,
               usd_notional,
-              day_count)
+              day_count,
+              position)
 
     print("Price = {}".format(round(fxf.npv, 4)))
     print("FX Delta = {}".format(round(fxf.fx_delta, 4)))
