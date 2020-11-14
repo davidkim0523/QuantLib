@@ -3,7 +3,7 @@ import QuantLib as ql
 from SWAP_CURVE import GET_QUOTE, SWAP_CURVE
 
 class IRS():
-    def __init__(self, date, curve, effective_date, maturity_date, calendar, convention, day_counter, fixed_tenor, float_tenor, irs_rate, notional, spread=0.0):
+    def __init__(self, date, effective_date, maturity_date, irs_rate, notional, spread=0.0):
         
         # Initial Setup 1 : Date & Curve
         self.date = date
@@ -12,11 +12,11 @@ class IRS():
         # Initial Setup 2 : Instrument Info
         self.effective_date = ql.Date(effective_date.day, effective_date.month, effective_date.year)
         self.maturity_date = ql.Date(maturity_date.day, maturity_date.month, maturity_date.year)
-        self.calendar = calendar
-        self.convention = convention
-        self.day_counter = day_counter
-        self.fixed_tenor = fixed_tenor
-        self.float_tenor = float_tenor
+        self.calendar = ql.UnitedStates()
+        self.convention = ql.ModifiedFollowing
+        self.day_counter = ql.Actual360()
+        self.fixed_tenor = ql.Period(1, ql.Years)
+        self.float_tenor = ql.Period(3, ql.Months)
         self.irs_rate = irs_rate
         self.notional = notional   
         self.spread = spread
@@ -106,31 +106,17 @@ if __name__ == "__main__":
     # Today's Date
     todays_date = datetime.date(2020, 10, 9)
     
-    # Build Curve
-    curve = SWAP_CURVE(todays_date, GET_QUOTE(todays_date))
-    
     # IRS Instrument Setup
     effective_date = datetime.date(2020, 10, 19)
     maturity_date = datetime.date(2022, 10, 19)
-    calendar = ql.UnitedStates()
-    convention = ql.ModifiedFollowing
-    day_counter = ql.Actual360()
-    fixed_tenor = ql.Period(1, ql.Years)
-    float_tenor = ql.Period(3, ql.Months)
     position = ql.VanillaSwap.Payer
     irs_rate = 0.00218
     notional = 10000000
         
     # Build IRS object
     irs = IRS(todays_date,
-              curve,
               effective_date,
               maturity_date,
-              calendar,
-              convention,
-              day_counter,
-              fixed_tenor,
-              float_tenor,
               irs_rate,
               notional)
     
