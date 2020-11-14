@@ -15,7 +15,6 @@ class FXF():
         
         # Initial Setup 2 - Instrument Info
         self.maturity_date = qe.Date(maturity_date.day, maturity_date.month, maturity_date.year)
-
         self.ccy1 = ccy1
         self.ccy1_notional = ccy1_notional
         self.ccy2 = ccy2
@@ -23,7 +22,8 @@ class FXF():
         
         self.day_count = day_count
         self.payCcy1 = False
-                
+        
+        
         # Pricing Results
         self.npv = self.PRICING(self.usd_curve, self.krw_curve, self.spot_handle)
         self.fx_delta = self.FX_DELTA(fx_spot)
@@ -84,13 +84,11 @@ class FXF():
         up_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(basis_point)))
         up_curve_handle = qe.YieldTermStructureHandle(up_curve)
         up_fxf = self.PRICING(up_curve_handle, self.krw_curve, self.spot_handle)
-        print(up_fxf)
         
         # FRA price when 1bp down
         down_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(-basis_point)))
         down_curve_handle = qe.YieldTermStructureHandle(down_curve)
         down_fxf = self.PRICING(down_curve_handle, self.krw_curve, self.spot_handle)
-        print(down_fxf)
 
         # DV01
         dv01 = (up_fxf - down_fxf) / 2
@@ -106,13 +104,11 @@ class FXF():
         up_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(basis_point)))
         up_curve_handle = qe.YieldTermStructureHandle(up_curve)
         up_fxf = self.PRICING(self.usd_curve, up_curve_handle, self.spot_handle)
-        print(up_fxf)
         
         # FRA price when 1bp down
         down_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(-basis_point)))
         down_curve_handle = qe.YieldTermStructureHandle(down_curve)
         down_fxf = self.PRICING(self.usd_curve, down_curve_handle, self.spot_handle)
-        print(down_fxf)
 
         # DV01
         dv01 = (up_fxf - down_fxf) / 2
@@ -120,11 +116,9 @@ class FXF():
     
     def THETA(self):
         price_t0 = self.PRICING(self.usd_curve, self.krw_curve, self.spot_handle)
-        print(price_t0)
         usd_curve_t1 = self.USD_CURVE(self.date + datetime.timedelta(days=1))
         krw_curve_t1 = self.KRW_CURVE(self.date + datetime.timedelta(days=1))
         price_t1 = self.PRICING(usd_curve_t1, krw_curve_t1, self.spot_handle)
-        print(price_t1)
         return price_t1 - price_t0
 
 if __name__ == "__main__":
@@ -137,7 +131,7 @@ if __name__ == "__main__":
     ccy1 = 'KRW'
     ccy2 = 'USD'
     
-    fx_forward = 1150.0
+    fx_forward = 1134.26
     
     # FX Forward Instrument
     krw = qe.KRWCurrency()
@@ -154,3 +148,9 @@ if __name__ == "__main__":
               usd,
               usd_notional,
               day_count)
+
+    print("Price = {}".format(round(fxf.npv, 4)))
+    print("FX Delta = {}".format(round(fxf.fx_delta, 4)))
+    print("USD Curve Delta = {}".format(round(fxf.usd_curve_delta, 4)))
+    print("KRW Curve Delta = {}".format(round(fxf.krw_curve_delta, 4)))
+    print("Theta = {}".format(round(fxf.theta, 4)))

@@ -118,7 +118,7 @@ if __name__ == "__main__":
     fixed_tenor = ql.Period(1, ql.Years)
     float_tenor = ql.Period(3, ql.Months)
     position = ql.VanillaSwap.Payer
-    irs_rate = 0.01
+    irs_rate = 0.00218
     notional = 10000000
         
     # Build IRS object

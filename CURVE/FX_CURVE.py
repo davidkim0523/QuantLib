@@ -12,7 +12,7 @@ import xlwings as xw
 def GET_QUOTE(today, ticker):
     
     # Import Data from Excel
-    xw.App(visible=False)
+    xw.App(visible=False)   
     wb = xw.Book(r'./FX_CURVE.xlsx')
     
     if ticker == 'USD':
