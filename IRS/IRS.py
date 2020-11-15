@@ -34,6 +34,7 @@ class IRS():
         # Yield Term-structure
         curve_handle = ql.YieldTermStructureHandle(curve)
         
+        # USD 3M LIBOR
         float_index = ql.USDLibor(ql.Period(3, ql.Months), curve_handle)
         
         # Fixed Schedule

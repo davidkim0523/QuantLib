@@ -3,7 +3,7 @@ import QuantExt as qe
 from FX_CURVE import GET_QUOTE, USDIRS_CURVE, KRWCCS_CURVE
 
 class FXF():
-    def __init__(self, todays_date, maturity_date, fx_spot, ccy1, ccy1_notional, ccy2, ccy2_notional, day_count, position):
+    def __init__(self, todays_date, maturity_date, fx_spot, ccy1_notional, ccy2_notional, position):
         
         # Initial Setup 1 - Date / Curves / Spot
         self.date = todays_date
@@ -15,12 +15,11 @@ class FXF():
         
         # Initial Setup 2 - Instrument Info
         self.maturity_date = qe.Date(maturity_date.day, maturity_date.month, maturity_date.year)
-        self.ccy1 = ccy1
+        self.ccy1 = qe.KRWCurrency()
         self.ccy1_notional = ccy1_notional
-        self.ccy2 = ccy2
+        self.ccy2 = qe.USDCurrency()
         self.ccy2_notional = ccy2_notional
-        
-        self.day_count = day_count
+        self.day_count = qe.ActualActual()
         
         if position == 'Long':
             self.payCcy1 = True
@@ -138,17 +137,13 @@ if __name__ == "__main__":
     krw = qe.KRWCurrency()
     usd_notional = 10000000
     krw_notional = usd_notional * fx_forward
-    day_count = qe.ActualActual()
     position = 'Long'
     
     fxf = FXF(todays_date,
               maturity_date,
               fx_spot,
-              krw,
               krw_notional,
-              usd,
               usd_notional,
-              day_count,
               position)
 
     print("Price = {}".format(round(fxf.npv, 4)))
