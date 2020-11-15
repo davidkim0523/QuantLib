@@ -3,7 +3,7 @@ import QuantLib as ql
 from SWAP_CURVE import GET_QUOTE, SWAP_CURVE
 
 class IRS():
-    def __init__(self, date, effective_date, maturity_date, irs_rate, notional, spread=0.0):
+    def __init__(self, date, effective_date, maturity_date, irs_rate, notional, position, spread=0.0):
         
         # Initial Setup 1 : Date & Curve
         self.date = date
@@ -119,7 +119,8 @@ if __name__ == "__main__":
               effective_date,
               maturity_date,
               irs_rate,
-              notional)
+              notional,
+              position)
     
     print("Price = {}".format(round(irs.npv, 4)))
     print("Delta = {}".format(round(irs.delta, 4)))

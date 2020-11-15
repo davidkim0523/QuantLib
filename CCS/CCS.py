@@ -4,7 +4,7 @@ from FX_CURVE import GET_QUOTE, USDIRS_CURVE, KRWCCS_CURVE
 
 class CCS():
     def __init__(self, todays_date, effective_date, maturity_date, ccs_rate, fx_spot, ccy1_notional, ccy2_notional, position):
-        # Initial Setup 1 - Date / Curves / Spot
+        # Initial Setup 1 - Date, Curves, FX Spot
         self.date = todays_date
         
         self.usd_curve = self.USD_CURVE(self.date)
