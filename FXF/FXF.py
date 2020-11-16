@@ -91,9 +91,9 @@ class FXF():
         down_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(-basis_point)))
         down_fxf = self.PRICING(down_curve, self.krw_curve, self.fx_spot)
 
-        # DV01
-        dv01 = (up_fxf - down_fxf) / 2
-        return dv01
+        # USD Curve Delta
+        delta = (up_fxf - down_fxf) / 2
+        return delta
     
     def KRW_CURVE_DELTA(self):
         curve_handle = qe.YieldTermStructureHandle(self.krw_curve)
@@ -109,16 +109,19 @@ class FXF():
         down_curve = qe.ZeroSpreadedTermStructure(curve_handle, qe.QuoteHandle(qe.SimpleQuote(-basis_point)))
         down_fxf = self.PRICING(self.usd_curve, down_curve, self.fx_spot)
 
-        # DV01
-        dv01 = (up_fxf - down_fxf) / 2
-        return dv01
+        # KRW Curve Delta
+        delta = (up_fxf - down_fxf) / 2
+        return delta
     
     def THETA(self):
         price_t0 = self.PRICING(self.usd_curve, self.krw_curve, self.fx_spot)
         usd_curve_t1 = self.USD_CURVE(self.date + datetime.timedelta(days=1))
         krw_curve_t1 = self.KRW_CURVE(self.date + datetime.timedelta(days=1))
         price_t1 = self.PRICING(usd_curve_t1, krw_curve_t1, self.fx_spot)
-        return price_t1 - price_t0
+        
+        theta = price_t1 - price_t0
+        
+        return theta
 
 
 
