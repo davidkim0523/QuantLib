@@ -1,11 +1,11 @@
 import datetime
 import QuantExt as qe
-from FX_CURVE import GET_QUOTE, USDIRS_CURVE, KRWCCS_CURVE
+from SWAP_CURVE import GET_QUOTE, USDIRS_CURVE, KRWCCS_CURVE
 
 class FXF():
     def __init__(self, todays_date, maturity_date, fx_spot, fx_forward, usd_notional, position):
         
-        # Initial Setup 1 - Date / Curves / Spot
+        # Initial Setup 1 - Date / Curves / FX Spot
         self.date = todays_date
         self.usd_curve = self.USD_CURVE(self.date)
         self.krw_curve = self.KRW_CURVE(self.date)
@@ -27,8 +27,8 @@ class FXF():
         # Pricing Results
         self.npv = self.PRICING(self.usd_curve, self.krw_curve, self.fx_spot)
         self.fx_delta = self.FX_DELTA()
-        self.usd_curve_delta = self.USD_CURVE_DELTA()
-        self.krw_curve_delta = self.KRW_CURVE_DELTA()
+        self.usd_ir_delta = self.USD_IR_DELTA()
+        self.krw_ir_delta = self.KRW_IR_DELTA()
         self.theta = self.THETA()
         
     def USD_CURVE(self, date):
@@ -57,27 +57,27 @@ class FXF():
                                                fx_spot_handle)
         
         fxf.setPricingEngine(engine)
-        
+
         npv = fxf.NPV()
         
         return npv
 
     def FX_DELTA(self):
         
-        # 1bp
-        basis_point = 0.0001
+        # 1%
+        percentage = 0.01
         
-        up_fx = self.fx_spot * (1 + basis_point)
+        up_fx = self.fx_spot * (1 + percentage)
         up_fxf = self.PRICING(self.usd_curve, self.krw_curve, up_fx)
         
-        down_fx = self.fx_spot * (1 - basis_point)
+        down_fx = self.fx_spot * (1 - percentage)
         down_fxf = self.PRICING(self.usd_curve, self.krw_curve, down_fx)
         
         fx_delta = (up_fxf - down_fxf) / 2
         
         return fx_delta
     
-    def USD_CURVE_DELTA(self):
+    def USD_IR_DELTA(self):
         curve_handle = qe.YieldTermStructureHandle(self.usd_curve)
         
         # 1bp
@@ -95,7 +95,7 @@ class FXF():
         delta = (up_fxf - down_fxf) / 2
         return delta
     
-    def KRW_CURVE_DELTA(self):
+    def KRW_IR_DELTA(self):
         curve_handle = qe.YieldTermStructureHandle(self.krw_curve)
         
         # 1bp
@@ -128,18 +128,19 @@ class FXF():
 if __name__ == "__main__":
     
     # Today's Date
-    todays_date = datetime.date(2020, 10, 20)
+    todays_date = datetime.date(2020, 10, 9)
     
     # FX Spot Rate
-    fx_spot = 1133.85
+    fx_spot = 1153.30
     
     # FX Forward Instrument
-    fx_forward = 1134.26
-    maturity_date = datetime.date(2020, 12, 26)
+    fx_forward = 1152.32
+    maturity_date = datetime.date(2021, 10, 9)
     usd_notional = 10000000
     krw_notional = usd_notional * fx_forward
     position = 'Long'
     
+    # Build FXF Object
     fxf = FXF(todays_date,
               maturity_date,
               fx_spot,
@@ -147,8 +148,9 @@ if __name__ == "__main__":
               usd_notional,
               position)
 
+    # Print the Results
     print("Price = {}".format(round(fxf.npv, 4)))
     print("FX Delta = {}".format(round(fxf.fx_delta, 4)))
-    print("USD Curve Delta = {}".format(round(fxf.usd_curve_delta, 4)))
-    print("KRW Curve Delta = {}".format(round(fxf.krw_curve_delta, 4)))
+    print("USD IR Delta = {}".format(round(fxf.usd_ir_delta, 4)))
+    print("KRW IR Delta = {}".format(round(fxf.krw_ir_delta, 4)))
     print("Theta = {}".format(round(fxf.theta, 4)))
