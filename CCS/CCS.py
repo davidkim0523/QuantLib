@@ -56,6 +56,7 @@ class CCS():
         fx_spot_handle = qe.QuoteHandle(qe.SimpleQuote(fx_spot))
         
         usd_6m_libor = qe.USDLibor(qe.Period(6, qe.Months), usd_curve_handle)
+        usd_6m_libor.addFixing(qe.Date(21, 5, 2020), 0.0009)
         
         fixed_schedule = qe.Schedule(self.effective_date,
                                      self.maturity_date,
@@ -118,6 +119,7 @@ class CCS():
         
         fx_delta = (up_ccs - down_ccs) / 2
         
+        
         return fx_delta
     
     def USD_CURVE_DELTA(self):
@@ -173,14 +175,14 @@ class CCS():
 if __name__ == "__main__":
     
     # Today's Date
-    todays_date = datetime.date(2020, 10, 20)
+    todays_date = datetime.date(2020, 10, 8)
     
     # FX Spot Rate
     fx_spot = 1133.85
 
     # CCS Instrument Info
     effective_date = datetime.date(2020, 11, 26)
-    maturity_date = datetime.date(2022, 11, 26)
+    maturity_date = datetime.date(2025, 11, 26)
     position = 'Long'
     ccs_rate = 0.0009746
     usd_notional = 10000000
